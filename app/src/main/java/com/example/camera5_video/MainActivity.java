@@ -1,11 +1,5 @@
 package com.example.camera5_video;
 
-import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
-import androidx.annotation.RequiresApi;
-import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
@@ -23,34 +17,29 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
-import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.Window;
 import android.widget.Button;
-import android.widget.ImageView;
 
 import java.io.File;
-import java.sql.Array;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Date;
-import java.util.Iterator;
 import java.util.List;
-import java.util.ListIterator;
+
+import androidx.annotation.RequiresApi;
+import androidx.appcompat.app.AppCompatActivity;
+import androidx.core.content.ContextCompat;
 
 public class MainActivity extends AppCompatActivity {
-    public static final String LOG_TAG = "myLogs";
 
     CameraService myCameras = null;
     private CameraManager mCameraManager = null;
     private Button mButtonOpenCamera1 = null;
     private TextureView mImageView = null;
     private boolean isStartRecording = false;
-
     private File mCurrentFile;
     private MediaRecorder mMediaRecorder = null;
     private HandlerThread mBackgroundThread;
@@ -61,7 +50,6 @@ public class MainActivity extends AppCompatActivity {
         mBackgroundThread.start();
         mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
     }
-
     private void stopBackgroundThread() {
         mBackgroundThread.quitSafely();
         try {
@@ -80,11 +68,11 @@ public class MainActivity extends AppCompatActivity {
             myCameras.openCamera();//когда экран создался, выводим на него изображение с камеры
         }
         @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) {        }
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) { }
         @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) {   return false;        }
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) { return false; }
         @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) {        }
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
     };
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -106,29 +94,19 @@ public class MainActivity extends AppCompatActivity {
         mButtonOpenCamera1 = findViewById(R.id.button1);   //находим кнопку
         mCameraManager = (CameraManager) getSystemService(Context.CAMERA_SERVICE);
         myCameras = new CameraService(mCameraManager);
-        mButtonOpenCamera1.setOnClickListener(new View.OnClickListener() { // слушатель нажатия на кнопку
-            @Override
-            public void onClick(View v) {//одна кнопка на включение и выключение
-                myCameras.surfaceList.clear();
-                if (!isStartRecording) {
-                    isStartRecording = true;// сообщаем что камера включена
-                    myUserRecord.setVisibility(View.VISIBLE);// делаем значок принудительной записи на панели видимым
-                    setUpMediaRecorder();
-                    myCameras.startCameraPreviewSession();
-                    mMediaRecorder.start();
-                } else if (isStartRecording) {
-                    isStartRecording = false;// сообщаем что камера выключена
-                    myUserRecord.setVisibility(View.INVISIBLE); // делаем значок принудительной записи на панели не видимым
-                    myCameras.stopRecordingVideo();
-                    myCameras.startCameraPreviewSession();
-                }
+        // слушатель нажатия на кнопку
+        mButtonOpenCamera1.setOnClickListener(v -> {//одна кнопка на включение и выключение
+            myCameras.surfaceList.clear();
+            if (!isStartRecording) {
+                startRecButton(myUserRecord);
+            } else if (isStartRecording) {
+                  stopRecButton(myUserRecord);
             }
         });
-        Log.i(LOG_TAG, " mSurfaceTextureListener 2");
         mImageView.setSurfaceTextureListener(mSurfaceTextureListener); // опрос создался ли экран
     }
 
-    private void setUpMediaRecorder() {
+    private void setUpMediaRecorder() { //подготовка камеры к записи
         mMediaRecorder = new MediaRecorder();
         mMediaRecorder.setVideoSource(MediaRecorder.VideoSource.SURFACE);
         mMediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
@@ -141,25 +119,39 @@ public class MainActivity extends AppCompatActivity {
         mMediaRecorder.setVideoEncoder(MediaRecorder.VideoEncoder.H264);
         try {
             mMediaRecorder.prepare();
-            Log.i(LOG_TAG, " запустили медиа рекордер");
-        } catch (Exception e) {
-            Log.i(LOG_TAG, "не запустили медиа рекордер");
-        }
+        } catch (Exception e) { }
     }
 
     private String fileName() { // название файла в виде дата,месяц,год_час,минута,секунда
         Date dateNow = new Date();//("yyyy.MM.dd 'и время' hh:mm:ss a zzz");
         SimpleDateFormat formatForDateNow = new SimpleDateFormat("dd.MM.yyyy_hh:mm:ss");
-        String date = "" + formatForDateNow.format(dateNow) + ".mp4";
-        return date;
+        return ("" + formatForDateNow.format(dateNow) + ".mp4");
     }
 
+    private void startRecButton(View myUserRecord) {
+        isStartRecording = true;// сообщаем что камера включена
+        myUserRecord.setVisibility(View.VISIBLE);// делаем значок принудительной записи на панели видимым
+        setUpMediaRecorder();
+        myCameras.startCameraPreviewSession();
+        mMediaRecorder.start();
+    }
+
+    private void stopRecButton(View myUserRecord) {
+        isStartRecording = false;// сообщаем что камера выключена
+        myUserRecord.setVisibility(View.INVISIBLE); // делаем значок принудительной записи на панели не видимым
+        myCameras.stopRecordingVideo();
+        myCameras.startCameraPreviewSession();
+    }
+
+
+
     public class CameraService {
-        private String mCameraID = "0"; // выбираем какую камеру использовать 0 - задняя, 1 - фронтальная
+        private final String mCameraID = "0"; // выбираем какую камеру использовать 0 - задняя, 1 - фронтальная
         private CameraDevice mCameraDevice = null;
         private CaptureRequest.Builder mPreviewBuilder;
         private CameraCaptureSession mSession;
-        private List<Surface> surfaceList = new ArrayList<Surface>();
+        private List<Surface> surfaceList = new ArrayList<>();
+
         public CameraService(CameraManager cameraManager) {
             mCameraManager = cameraManager;
         }
@@ -171,11 +163,9 @@ public class MainActivity extends AppCompatActivity {
                 startCameraPreviewSession();
             }
             @Override
-            public void onDisconnected(CameraDevice camera) {            }
+            public void onDisconnected(CameraDevice camera) { }
             @Override
-            public void onError(CameraDevice camera, int error) {
-                Log.i(LOG_TAG, "error! CameraService");
-            }
+            public void onError(CameraDevice camera, int error) { }
         };
 
         private void startCameraPreviewSession() {  // вывод изображения на экран во время записи
@@ -185,16 +175,14 @@ public class MainActivity extends AppCompatActivity {
             try {
                 mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
                 mPreviewBuilder.addTarget(surface);
-                surfaceList.add(0,surface);
+                surfaceList.add(0, surface);
                 try {
+// при запуске setUpMediaRecorder = null, и выдает ошибку  выдает ошибку даже если в if сравнить с null
+// чтоб не писать 2 метода для запуска программы в предпросмотре и при записи, заносив getSurface в try
                     mPreviewBuilder.addTarget(mMediaRecorder.getSurface());
-                    surfaceList.add(1,mMediaRecorder.getSurface());
-                }catch (Exception e){
-                    Log.i(LOG_TAG, "NullPointerException ");
-                }
-                Log.i(LOG_TAG, "surfaceList = " + surfaceList);
-                mCameraDevice.createCaptureSession(surfaceList,
-                        new CameraCaptureSession.StateCallback() {
+                    surfaceList.add(1, mMediaRecorder.getSurface());
+                } catch (Exception e) {  }
+                mCameraDevice.createCaptureSession(surfaceList, new CameraCaptureSession.StateCallback() {
                             @Override
                             public void onConfigured(CameraCaptureSession session) {
                                 mSession = session;
@@ -205,23 +193,22 @@ public class MainActivity extends AppCompatActivity {
                                 }
                             }
                             @Override
-                            public void onConfigureFailed(CameraCaptureSession session) {
-                            }
+                            public void onConfigureFailed(CameraCaptureSession session) {    }
                         }, mBackgroundHandler);
-
             } catch (CameraAccessException e) {
                 e.printStackTrace();
             }
         }
+
         @SuppressLint("NewApi")
         public void openCamera() {//проверяем, получено ли разрешение на использование камеры
             try {
                 if (checkSelfPermission(Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
                     mCameraManager.openCamera(mCameraID, mCameraCallback, null);
                 }
-            } catch (CameraAccessException e) {
-            }
+            } catch (CameraAccessException e) {  }
         }
+
         public void stopRecordingVideo() {
             try {
                 mSession.stopRepeating();
@@ -231,11 +218,10 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
             mMediaRecorder.stop();
-            mMediaRecorder = null;
             mBackgroundHandler = null;
-            //mMediaRecorder.release();
         }
-    }
+  }
+
     @Override
     public void onPause() {
         stopBackgroundThread();
