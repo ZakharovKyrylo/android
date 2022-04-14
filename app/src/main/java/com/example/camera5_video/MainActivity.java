@@ -44,6 +44,7 @@ public class MainActivity extends AppCompatActivity {
     private MediaRecorder mMediaRecorder = null;
     private HandlerThread mBackgroundThread;
     private Handler mBackgroundHandler = null;
+    View myUserRecord;
 
     private void startBackgroundThread() {
         mBackgroundThread = new HandlerThread("CameraBackground");
@@ -81,7 +82,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         requestWindowFeature(Window.FEATURE_NO_TITLE);// убираем заголовок
         setContentView(R.layout.activity_main);
-        View myUserRecord = findViewById(R.id.userRecord); // находим иконку отвечающую за Принудительную запись
+        myUserRecord = findViewById(R.id.userRecord); // находим иконку отвечающую за Принудительную запись
         // Запрашиваем разрешение на использования камеры и папок
         // БЕЗ ЭТОГО НЕ ЗАРАБОТАЕТ
         if (checkSelfPermission(Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
@@ -98,9 +99,9 @@ public class MainActivity extends AppCompatActivity {
         mButtonOpenCamera1.setOnClickListener(v -> {//одна кнопка на включение и выключение
             myCameras.surfaceList.clear();
             if (!isStartRecording) {
-                startRecButton(myUserRecord);
+                startRec();
             } else if (isStartRecording) {
-                  stopRecButton(myUserRecord);
+                  stopRec();
             }
         });
         mImageView.setSurfaceTextureListener(mSurfaceTextureListener); // опрос создался ли экран
@@ -128,7 +129,7 @@ public class MainActivity extends AppCompatActivity {
         return ("" + formatForDateNow.format(dateNow) + ".mp4");
     }
 
-    private void startRecButton(View myUserRecord) {
+    private void startRec() {
         isStartRecording = true;// сообщаем что камера включена
         myUserRecord.setVisibility(View.VISIBLE);// делаем значок принудительной записи на панели видимым
         setUpMediaRecorder();
@@ -136,7 +137,7 @@ public class MainActivity extends AppCompatActivity {
         mMediaRecorder.start();
     }
 
-    private void stopRecButton(View myUserRecord) {
+    private void stopRec() {
         isStartRecording = false;// сообщаем что камера выключена
         myUserRecord.setVisibility(View.INVISIBLE); // делаем значок принудительной записи на панели не видимым
         myCameras.stopRecordingVideo();
