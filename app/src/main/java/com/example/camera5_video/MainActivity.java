@@ -76,9 +76,13 @@ public class MainActivity extends AppCompatActivity {
         // слушатель нажатия на кнопку
         mButtonOpenCamera1.setOnClickListener(v -> {//одна кнопка на включение и выключение
             if (!isStartRecording) {
-                startRec();
+                isStartRecording = true;// сообщаем что камера включена
+                myUserRecord.setVisibility(View.VISIBLE);// делаем значок принудительной записи на панели видимым
+                myCameras.startRecButton();
             } else if (isStartRecording) {
-                  stopRec();
+                myUserRecord.setVisibility(View.INVISIBLE);// делаем значок принудительной записи на панели видимым
+                isStartRecording = false;// сообщаем что камера выключена
+                //myCameras.stopRecordingVideo();
             }
         });
         mImageView.setSurfaceTextureListener(mSurfaceTextureListener); // опрос создался ли экран
