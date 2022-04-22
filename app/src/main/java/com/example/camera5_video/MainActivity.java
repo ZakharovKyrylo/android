@@ -28,12 +28,16 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.Timer;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
 
 public class MainActivity extends AppCompatActivity {
+
+    public static final String myLog = "My Log";
+    public static final int delay = 3*1000;
 
     CameraService myCameras = null;
     private CameraManager mCameraManager = null;
@@ -45,7 +49,7 @@ public class MainActivity extends AppCompatActivity {
     private HandlerThread mBackgroundThread;
     private Handler mBackgroundHandler = null;
     View myUserRecord;
-
+    Timer timer;
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
