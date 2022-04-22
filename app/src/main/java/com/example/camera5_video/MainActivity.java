@@ -46,35 +46,6 @@ public class MainActivity extends AppCompatActivity {
     private Handler mBackgroundHandler = null;
     View myUserRecord;
 
-    private void startBackgroundThread() {
-        mBackgroundThread = new HandlerThread("CameraBackground");
-        mBackgroundThread.start();
-        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
-    }
-    private void stopBackgroundThread() {
-        mBackgroundThread.quitSafely();
-        try {
-            mBackgroundThread.join();
-            mBackgroundThread = null;
-            mBackgroundHandler = null;
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-    }
-
-    //Слушатель, создался экран или нет, нужен для автоматического вывода изображения на экран при включении
-    private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
-        @Override
-        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
-            myCameras.openCamera();//когда экран создался, выводим на него изображение с камеры
-        }
-        @Override
-        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) { }
-        @Override
-        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) { return false; }
-        @Override
-        public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
-    };
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -129,22 +100,35 @@ public class MainActivity extends AppCompatActivity {
         return ("" + formatForDateNow.format(dateNow) + ".mp4");
     }
 
-    private void startRec() {
-        isStartRecording = true;// сообщаем что камера включена
-        myUserRecord.setVisibility(View.VISIBLE);// делаем значок принудительной записи на панели видимым
-        setUpMediaRecorder();
-        myCameras.startCameraPreviewSession();
-        mMediaRecorder.start();
+    //Слушатель, создался экран или нет, нужен для автоматического вывода изображения на экран при включении
+    private TextureView.SurfaceTextureListener mSurfaceTextureListener = new TextureView.SurfaceTextureListener() {
+        @Override
+        public void onSurfaceTextureAvailable(SurfaceTexture surface, int width, int height) {
+            myCameras.openCamera();//когда экран создался, выводим на него изображение с камеры
+        }
+        @Override
+        public void onSurfaceTextureSizeChanged(SurfaceTexture surface, int width, int height) { }
+        @Override
+        public boolean onSurfaceTextureDestroyed(SurfaceTexture surface) { return false; }
+        @Override
+        public void onSurfaceTextureUpdated(SurfaceTexture surface) { }
+    };
+
+    private void startBackgroundThread() {
+        mBackgroundThread = new HandlerThread("CameraBackground");
+        mBackgroundThread.start();
+        mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
     }
-
-    private void stopRec() {
-        isStartRecording = false;// сообщаем что камера выключена
-        myUserRecord.setVisibility(View.INVISIBLE); // делаем значок принудительной записи на панели не видимым
-        myCameras.stopRecordingVideo();
-        myCameras.startCameraPreviewSession();
+    private void stopBackgroundThread() {
+        mBackgroundThread.quitSafely();
+        try {
+            mBackgroundThread.join();
+            mBackgroundThread = null;
+            mBackgroundHandler = null;
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
-
-
 
     public class CameraService {
         private final String mCameraID = "0"; // выбираем какую камеру использовать 0 - задняя, 1 - фронтальная
@@ -211,6 +195,8 @@ public class MainActivity extends AppCompatActivity {
         }
 
         public void stopRecordingVideo() {
+            isStartRecording = false;// сообщаем что камера выключена
+            myUserRecord.setVisibility(View.INVISIBLE); // делаем значок принудительной записи на панели не видимым
             try {
                 mSession.stopRepeating();
                 mSession.abortCaptures();
@@ -220,7 +206,17 @@ public class MainActivity extends AppCompatActivity {
             }
             mMediaRecorder.stop();
             mBackgroundHandler = null;
+            myCameras.startCameraPreviewSession();
         }
+
+        private void startRecButton() {
+            isStartRecording = true;// сообщаем что камера включена
+            myUserRecord.setVisibility(View.VISIBLE);// делаем значок принудительной записи на панели видимым
+            setUpMediaRecorder();
+            myCameras.startCameraPreviewSession();
+            mMediaRecorder.start();
+        }
+
   }
 
     @Override
