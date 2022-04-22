@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.util.Log;
 import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
@@ -29,6 +30,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Timer;
+import java.util.TimerTask;
 
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
@@ -37,7 +39,7 @@ import androidx.core.content.ContextCompat;
 public class MainActivity extends AppCompatActivity {
 
     public static final String myLog = "My Log";
-    public static final int delay = 3*1000;
+    public static final int delay = 2*60*1000;
 
     CameraService myCameras = null;
     private CameraManager mCameraManager = null;
@@ -50,6 +52,7 @@ public class MainActivity extends AppCompatActivity {
     private Handler mBackgroundHandler = null;
     View myUserRecord;
     Timer timer;
+
 
     @RequiresApi(api = Build.VERSION_CODES.M)
     @Override
@@ -72,7 +75,6 @@ public class MainActivity extends AppCompatActivity {
         myCameras = new CameraService(mCameraManager);
         // слушатель нажатия на кнопку
         mButtonOpenCamera1.setOnClickListener(v -> {//одна кнопка на включение и выключение
-            myCameras.surfaceList.clear();
             if (!isStartRecording) {
                 startRec();
             } else if (isStartRecording) {
@@ -124,13 +126,16 @@ public class MainActivity extends AppCompatActivity {
         mBackgroundHandler = new Handler(mBackgroundThread.getLooper());
     }
     private void stopBackgroundThread() {
-        mBackgroundThread.quitSafely();
+       // mBackgroundThread.quitSafely();
         try {
+            mBackgroundThread.quitSafely();
             mBackgroundThread.join();
             mBackgroundThread = null;
             mBackgroundHandler = null;
         } catch (InterruptedException e) {
             e.printStackTrace();
+        } catch (NullPointerException e){
+            Log.i(myLog ,"mBackgroundThread.quitSafely();");
         }
     }
 
@@ -157,10 +162,12 @@ public class MainActivity extends AppCompatActivity {
             public void onError(CameraDevice camera, int error) { }
         };
 
-        private void startCameraPreviewSession() {  // вывод изображения на экран во время записи
+        private void startCameraPreviewSession() {  // вывод изображения на экран во время
+            surfaceList.clear();
             SurfaceTexture texture = mImageView.getSurfaceTexture();
             texture.setDefaultBufferSize(1920, 1080);
             Surface surface = new Surface(texture);
+            Log.i(myLog , "surface = " + surface);
             try {
                 mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
                 mPreviewBuilder.addTarget(surface);
@@ -200,7 +207,6 @@ public class MainActivity extends AppCompatActivity {
 
         public void stopRecordingVideo() {
             isStartRecording = false;// сообщаем что камера выключена
-            myUserRecord.setVisibility(View.INVISIBLE); // делаем значок принудительной записи на панели не видимым
             try {
                 mSession.stopRepeating();
                 mSession.abortCaptures();
@@ -209,7 +215,7 @@ public class MainActivity extends AppCompatActivity {
                 e.printStackTrace();
             }
             mMediaRecorder.stop();
-            mBackgroundHandler = null;
+            myUserRecord.setVisibility(View.INVISIBLE); // делаем значок принудительной записи на панели не видимым
             myCameras.startCameraPreviewSession();
         }
 
@@ -219,6 +225,18 @@ public class MainActivity extends AppCompatActivity {
             setUpMediaRecorder();
             myCameras.startCameraPreviewSession();
             mMediaRecorder.start();
+            timer = new Timer();
+            timer.schedule(new TimerTask() {
+                @Override
+                public void run() {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            myCameras.stopRecordingVideo();
+                        }
+                    });
+                }
+            }, delay);
         }
 
   }
