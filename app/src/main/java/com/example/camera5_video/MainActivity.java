@@ -4,13 +4,16 @@ import android.Manifest;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.ImageFormat;
 import android.graphics.SurfaceTexture;
 import android.hardware.camera2.CameraAccessException;
 import android.hardware.camera2.CameraCaptureSession;
 import android.hardware.camera2.CameraDevice;
 import android.hardware.camera2.CameraManager;
 import android.hardware.camera2.CaptureRequest;
+import android.hardware.camera2.TotalCaptureResult;
 import android.media.CamcorderProfile;
+import android.media.ImageReader;
 import android.media.MediaRecorder;
 import android.os.Build;
 import android.os.Bundle;
@@ -32,6 +35,7 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import androidx.annotation.NonNull;
 import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.content.ContextCompat;
@@ -39,9 +43,9 @@ import androidx.core.content.ContextCompat;
 public class MainActivity extends AppCompatActivity {
 
     public static final String myLog = "My Log";
-    public static final int delay = 2*60*1000;
+    public static final int delayRec = 2*60*1000;
 
-    CameraService myCameras = null;
+    private CameraService myCameras = null;
     private CameraManager mCameraManager = null;
     private Button mButtonOpenCamera1 = null;
     private TextureView mImageView = null;
@@ -52,6 +56,7 @@ public class MainActivity extends AppCompatActivity {
     private Handler mBackgroundHandler = null;
     View myUserRecord;
     Timer timer;
+
 
 
     @RequiresApi(api = Build.VERSION_CODES.M)
@@ -86,6 +91,7 @@ public class MainActivity extends AppCompatActivity {
             }
         });
         mImageView.setSurfaceTextureListener(mSurfaceTextureListener); // опрос создался ли экран
+
     }
 
     private void setUpMediaRecorder() { //подготовка камеры к записи
@@ -149,6 +155,11 @@ public class MainActivity extends AppCompatActivity {
         private CaptureRequest.Builder mPreviewBuilder;
         private CameraCaptureSession mSession;
         private List<Surface> surfaceList = new ArrayList<>();
+        private ImageReader mImageReader;
+        private Timer timerForScreen;
+        private ScreenDetector mScreenDetector;
+        final int checkDelay = 500;
+
 
         public CameraService(CameraManager cameraManager) {
             mCameraManager = cameraManager;
@@ -169,6 +180,8 @@ public class MainActivity extends AppCompatActivity {
         private void startCameraPreviewSession() {  // вывод изображения на экран во время
             surfaceList.clear();
             SurfaceTexture texture = mImageView.getSurfaceTexture();
+            mImageReader = ImageReader.newInstance(1920,1080, ImageFormat.JPEG,1);
+            mImageReader.setOnImageAvailableListener(mOnImageAvailableListener, null);
             texture.setDefaultBufferSize(1920, 1080);
             Surface surface = new Surface(texture);
             Log.i(myLog , "surface = " + surface);
@@ -176,11 +189,12 @@ public class MainActivity extends AppCompatActivity {
                 mPreviewBuilder = mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_PREVIEW);
                 mPreviewBuilder.addTarget(surface);
                 surfaceList.add(0, surface);
+                surfaceList.add(1, mImageReader.getSurface());
                 try {
 // при запуске setUpMediaRecorder = null, и выдает ошибку  выдает ошибку даже если в if сравнить с null
 // чтоб не писать 2 метода для запуска программы в предпросмотре и при записи, заносив getSurface в try
                     mPreviewBuilder.addTarget(mMediaRecorder.getSurface());
-                    surfaceList.add(1, mMediaRecorder.getSurface());
+                    surfaceList.add(2, mMediaRecorder.getSurface());
                 } catch (Exception e) {  }
                 mCameraDevice.createCaptureSession(surfaceList, new CameraCaptureSession.StateCallback() {
                             @Override
@@ -198,7 +212,55 @@ public class MainActivity extends AppCompatActivity {
             } catch (CameraAccessException e) {
                 e.printStackTrace();
             }
+            timerForScreen = new Timer();
+            timerForScreen.scheduleAtFixedRate(new TimerTask() {
+                @Override
+                public void run() {
+                    runOnUiThread(new Runnable() {
+                        @Override
+                        public void run() {
+                            Log.i(myLog , "Timer");
+                            makePhoto();
+                        }
+                    });
+                }
+            }, checkDelay , checkDelay);
+
         }
+
+        public void makePhoto (){
+            try {
+                // This is the CaptureRequest.Builder that we use to take a picture.
+                final CaptureRequest.Builder captureBuilder =
+                        mCameraDevice.createCaptureRequest(CameraDevice.TEMPLATE_STILL_CAPTURE);
+                captureBuilder.addTarget(mImageReader.getSurface());
+                CameraCaptureSession.CaptureCallback CaptureCallback = new CameraCaptureSession.CaptureCallback() {
+                    @Override
+                    public void onCaptureCompleted(@NonNull CameraCaptureSession session,
+                                                   @NonNull CaptureRequest request,
+                                                   @NonNull TotalCaptureResult result) {
+
+                    }
+                };
+               // mSession.stopRepeating();
+               // mSession.abortCaptures();
+                mSession.capture(captureBuilder.build(), CaptureCallback, mBackgroundHandler);
+            }
+            catch (CameraAccessException e) {
+                e.printStackTrace();
+            }
+        }
+
+
+        private final ImageReader.OnImageAvailableListener mOnImageAvailableListener
+                = new ImageReader.OnImageAvailableListener() {
+            @Override
+            public void onImageAvailable(ImageReader reader) {
+                Log.i(myLog, "Рисунок готов ");
+                mScreenDetector = new ScreenDetector(reader.acquireNextImage() , myCameras);
+                mBackgroundHandler.post(mScreenDetector);
+            }
+        };
 
         @SuppressLint("NewApi")
         public void openCamera() {//проверяем, получено ли разрешение на использование камеры
@@ -209,7 +271,7 @@ public class MainActivity extends AppCompatActivity {
             } catch (CameraAccessException e) {  }
         }
 
-        public void stopRecordingVideo() {
+        private void stopRecordingVideo() {
             isStartRecording = false;// сообщаем что камера выключена
             try {
                 mSession.stopRepeating();
@@ -223,7 +285,7 @@ public class MainActivity extends AppCompatActivity {
             myCameras.startCameraPreviewSession();
         }
 
-        private void startRecButton() {
+        public void startRecButton() {
             isStartRecording = true;// сообщаем что камера включена
             myUserRecord.setVisibility(View.VISIBLE);// делаем значок принудительной записи на панели видимым
             setUpMediaRecorder();
@@ -240,7 +302,7 @@ public class MainActivity extends AppCompatActivity {
                         }
                     });
                 }
-            }, delay);
+            }, delayRec);
         }
 
   }
@@ -255,4 +317,6 @@ public class MainActivity extends AppCompatActivity {
         super.onResume();
         startBackgroundThread();
     }
+
+
 }
